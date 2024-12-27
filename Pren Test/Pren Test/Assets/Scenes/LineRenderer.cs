@@ -6,10 +6,14 @@ public class LineRendererController : MonoBehaviour
 {
     public LineRenderer lineRenderer;
     public GameObject nodePrefab;
+    public GameObject conePrefab;
 
     public Transform[] points;
     public GameObject[] nodes;
-    const bool FIXED = true;
+    public GameObject[] cones;
+    public const bool FIXED_INITIATION = true;
+
+    public const int MAX_CONES = 2;
 
     public const int MAX_POINTS = 8;
 
@@ -17,8 +21,10 @@ public class LineRendererController : MonoBehaviour
     {
         points = new Transform[MAX_POINTS]; // Initialize the array with the correct size
         nodes = new GameObject[MAX_POINTS]; // Initialize the array with the correct size
+        cones = new GameObject[MAX_CONES]; // Initialize the array with the correct size
+
         lineRenderer.positionCount = points.Length;
-        if (FIXED)
+        if (FIXED_INITIATION)
         {
             // Hexagon
             nodes[0] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity);
@@ -31,10 +37,8 @@ public class LineRendererController : MonoBehaviour
             nodes[6] = Instantiate(nodePrefab, new Vector3(2, 0, -1), Quaternion.identity); // Center node
             nodes[7] = Instantiate(nodePrefab, new Vector3(4, 0, 0), Quaternion.identity); // Center node
 
-            foreach (GameObject node in nodes)
-            {
-                points[Array.IndexOf(nodes, node)] = node.transform; // Initialize points[i] with the transform of the instantiated node
-            }
+            GenerateRandomCones();
+
         }
         else{
             for (int i = 0; i < MAX_POINTS; i++)
@@ -63,7 +67,10 @@ public class LineRendererController : MonoBehaviour
 
         // List to store the positions for the LineRenderer
         List<Vector3> positions = new List<Vector3>();
-
+        foreach (GameObject node in nodes)
+            {
+                points[Array.IndexOf(nodes, node)] = node.transform; // Initialize points[i] with the transform of the instantiated node
+            }
         // Iterate through each point
         for (int i = 0; i < points.Length; i++)
         {
@@ -89,12 +96,22 @@ public class LineRendererController : MonoBehaviour
                 int closestIndex = distances[k].Item2;
                 positions.Add(points[i].position);
                 positions.Add(points[closestIndex].position);
-                Console.WriteLine("Connecting Node " + i + " to Node " + closestIndex + " with distance " + distances[k].Item1);
+                Debug.Log("Connecting Node " + i + " to Node " + closestIndex + " with distance " + distances[k].Item1);
             }
         }
 
         // Set the positions to the LineRenderer
         lineRenderer.positionCount = positions.Count;
         lineRenderer.SetPositions(positions.ToArray());
+    }
+    private void GenerateRandomCones()
+    {
+        // Generate random cones
+        for (int i = 0; i < MAX_CONES; i++)
+        {
+            int randomIndex = UnityEngine.Random.Range(1, MAX_POINTS-1);
+            Debug.Log("Random cone generated at index: " + randomIndex);
+            cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, nodes[randomIndex].transform.position.y, nodes[randomIndex].transform.position.z), Quaternion.identity);
+        }
     }
 }
