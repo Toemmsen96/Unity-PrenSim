@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 public class LineRendererController : MonoBehaviour
 {
-    public LineRenderer lineRenderer;
+    //public LineRenderer lineRenderer;
     public GameObject nodePrefab;
     public GameObject conePrefab;
     public GameObject linePrefab;
@@ -27,12 +27,13 @@ public class LineRendererController : MonoBehaviour
 
     void Start()
     {
+        Instance = this;
         nodes = new GameObject[MAX_POINTS]; // Initialize the array with the correct size
         cones = new GameObject[MAX_CONES]; // Initialize the array with the correct size
         lines = new GameObject[MAX_LINES]; // Initialize the array with the correct size
         coneIndices = new int[MAX_CONES]; // Initialize the array with the correct size
 
-        lineRenderer.positionCount = nodes.Length;
+        //lineRenderer.positionCount = nodes.Length;
         if (FIXED_INITIATION)
         {
             // Hexagon
@@ -51,22 +52,9 @@ public class LineRendererController : MonoBehaviour
                 lines[i] = line;
             }
             GenerateRandomCones();
+            GenerateConnections();
 
-            connections.Add(new Connection(0, 1));
-            connections.Add(new Connection(0, 6));
-            connections.Add(new Connection(0, 2));
-            connections.Add(new Connection(1, 3));
-            connections.Add(new Connection(1, 6));
-            connections.Add(new Connection(1, 7));
-            connections.Add(new Connection(2, 4));
-            connections.Add(new Connection(2, 6));
-            connections.Add(new Connection(3, 5));
-            connections.Add(new Connection(3, 7));
-            connections.Add(new Connection(4, 5));
-            connections.Add(new Connection(4, 6));
-            connections.Add(new Connection(4, 7));
-            connections.Add(new Connection(5, 7));
-            connections.Add(new Connection(6, 7));
+
 
         }
         else{
@@ -143,6 +131,27 @@ public class LineRendererController : MonoBehaviour
             cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, 0, nodes[randomIndex].transform.position.z), Quaternion.identity);
         }
     }
+
+    private void GenerateConnections(){
+            connections.Add(new Connection(0, 1));
+            connections.Add(new Connection(0, 6));
+            connections.Add(new Connection(0, 2));
+            connections.Add(new Connection(1, 3));
+            connections.Add(new Connection(1, 6));
+            connections.Add(new Connection(1, 7));
+            connections.Add(new Connection(2, 4));
+            connections.Add(new Connection(2, 6));
+            connections.Add(new Connection(3, 5));
+            connections.Add(new Connection(3, 7));
+            connections.Add(new Connection(4, 5));
+            connections.Add(new Connection(4, 6));
+            connections.Add(new Connection(4, 7));
+            connections.Add(new Connection(5, 7));
+            connections.Add(new Connection(6, 7));
+    }
+
+    public static LineRendererController Instance { get; private set; }
+
     public class Connection{
         private int start;
         private int end;

@@ -152,14 +152,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1006c95ef66a4d2beb2647f2c36873f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lineRenderer: {fileID: 52119507}
   nodePrefab: {fileID: 7777818116555666906, guid: 6033be0197690f6cf9d1bbc7223d38c8, type: 3}
   conePrefab: {fileID: 1452945499651189308, guid: 53c5ba3a83c4d9b31bfaea4eb38179c0, type: 3}
-  points:
-  - {fileID: 0}
-  - {fileID: 0}
+  linePrefab: {fileID: 5156051261388621537, guid: 849201e10034bc1cfb32d9967067482d, type: 3}
   nodes: []
   cones: []
+  lines: []
   coneIndices: 
   DistanceMultiplier: 8
 --- !u!120 &52119507
@@ -899,7 +897,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1697935064}
   - component: {fileID: 1697935063}
-  - component: {fileID: 1697935062}
   - component: {fileID: 1697935065}
   m_Layer: 0
   m_Name: Main Camera
@@ -908,14 +905,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1697935062
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1697935061}
-  m_Enabled: 1
 --- !u!20 &1697935063
 Camera:
   m_ObjectHideFlags: 0
