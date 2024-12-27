@@ -11,7 +11,10 @@ public class LineRendererController : MonoBehaviour
     public Transform[] points;
     public GameObject[] nodes;
     public GameObject[] cones;
+    public int[] coneIndices;
     public const bool FIXED_INITIATION = true;
+
+    public float DistanceMultiplier = 4;
 
     public const int MAX_CONES = 2;
 
@@ -22,20 +25,21 @@ public class LineRendererController : MonoBehaviour
         points = new Transform[MAX_POINTS]; // Initialize the array with the correct size
         nodes = new GameObject[MAX_POINTS]; // Initialize the array with the correct size
         cones = new GameObject[MAX_CONES]; // Initialize the array with the correct size
+        coneIndices = new int[MAX_CONES]; // Initialize the array with the correct size
 
         lineRenderer.positionCount = points.Length;
         if (FIXED_INITIATION)
         {
             // Hexagon
             nodes[0] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity);
-            nodes[1] = Instantiate(nodePrefab, new Vector3(2, 0, 2), Quaternion.identity);
-            nodes[2] = Instantiate(nodePrefab, new Vector3(2, 0, -2), Quaternion.identity);
-            nodes[3] = Instantiate(nodePrefab, new Vector3(4, 0, 2), Quaternion.identity);
-            nodes[4] = Instantiate(nodePrefab, new Vector3(4, 0, -2), Quaternion.identity);
-            nodes[5] = Instantiate(nodePrefab, new Vector3(6, 0, 0), Quaternion.identity);
+            nodes[1] = Instantiate(nodePrefab, new Vector3(1*DistanceMultiplier, 0, 1*DistanceMultiplier), Quaternion.identity);
+            nodes[2] = Instantiate(nodePrefab, new Vector3(1*DistanceMultiplier, 0, -1*DistanceMultiplier), Quaternion.identity);
+            nodes[3] = Instantiate(nodePrefab, new Vector3(2*DistanceMultiplier, 0, 1*DistanceMultiplier), Quaternion.identity);
+            nodes[4] = Instantiate(nodePrefab, new Vector3(2*DistanceMultiplier, 0, -1*DistanceMultiplier), Quaternion.identity);
+            nodes[5] = Instantiate(nodePrefab, new Vector3(3*DistanceMultiplier, 0, 0), Quaternion.identity);
             // extra nodes
-            nodes[6] = Instantiate(nodePrefab, new Vector3(2, 0, -1), Quaternion.identity); // Center node
-            nodes[7] = Instantiate(nodePrefab, new Vector3(4, 0, 0), Quaternion.identity); // Center node
+            nodes[6] = Instantiate(nodePrefab, new Vector3(1*DistanceMultiplier, 0, -0.5f*DistanceMultiplier), Quaternion.identity); // Center node
+            nodes[7] = Instantiate(nodePrefab, new Vector3(2*DistanceMultiplier, 0, 0), Quaternion.identity); // Center node
 
             GenerateRandomCones();
 
@@ -109,9 +113,13 @@ public class LineRendererController : MonoBehaviour
         // Generate random cones
         for (int i = 0; i < MAX_CONES; i++)
         {
-            int randomIndex = UnityEngine.Random.Range(1, MAX_POINTS-1);
+            int randomIndex;
+            do{
+            randomIndex = UnityEngine.Random.Range(1, MAX_POINTS-1);
+            } while (Array.Exists(coneIndices, element => element == randomIndex));
             Debug.Log("Random cone generated at index: " + randomIndex);
-            cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, nodes[randomIndex].transform.position.y, nodes[randomIndex].transform.position.z), Quaternion.identity);
+            coneIndices[i] = randomIndex;
+            cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, 0, nodes[randomIndex].transform.position.z), Quaternion.identity);
         }
     }
 }
