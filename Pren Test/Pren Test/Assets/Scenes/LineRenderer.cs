@@ -9,28 +9,51 @@ public class LineRendererController : MonoBehaviour
 
     public Transform[] points;
     public GameObject[] nodes;
+    const bool FIXED = true;
 
-    public const int MAX_POINTS = 7;
+    public const int MAX_POINTS = 8;
 
     void Start()
     {
         points = new Transform[MAX_POINTS]; // Initialize the array with the correct size
         nodes = new GameObject[MAX_POINTS]; // Initialize the array with the correct size
         lineRenderer.positionCount = points.Length;
-        for (int i = 0; i < MAX_POINTS; i++)
+        if (FIXED)
         {
-            if (i == 0)
+            // Hexagon
+            nodes[0] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity);
+            nodes[1] = Instantiate(nodePrefab, new Vector3(2, 0, 2), Quaternion.identity);
+            nodes[2] = Instantiate(nodePrefab, new Vector3(2, 0, -2), Quaternion.identity);
+            nodes[3] = Instantiate(nodePrefab, new Vector3(4, 0, 2), Quaternion.identity);
+            nodes[4] = Instantiate(nodePrefab, new Vector3(4, 0, -2), Quaternion.identity);
+            nodes[5] = Instantiate(nodePrefab, new Vector3(6, 0, 0), Quaternion.identity);
+            // extra nodes
+            nodes[6] = Instantiate(nodePrefab, new Vector3(2, 0, -1), Quaternion.identity); // Center node
+            nodes[7] = Instantiate(nodePrefab, new Vector3(4, 0, 0), Quaternion.identity); // Center node
+
+            foreach (GameObject node in nodes)
             {
-                nodes[i] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity);
+                points[Array.IndexOf(nodes, node)] = node.transform; // Initialize points[i] with the transform of the instantiated node
             }
-            else
-            {
-                nodes[i] = Instantiate(nodePrefab, new Vector3(i + 5*(i%2), 0, i-5*(i%2)), Quaternion.identity);
-            }
-            
-            points[i] = nodes[i].transform; // Initialize points[i] with the transform of the instantiated node
-            Console.WriteLine("Node " + i + " created at " + points[i].position);
         }
+        else{
+            for (int i = 0; i < MAX_POINTS; i++)
+            {
+                if (i == 0)
+                {
+                    nodes[i] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity);
+                }
+                else
+                {
+                    nodes[i] = Instantiate(nodePrefab, new Vector3(i + 5*(i%2), 0, i-5*(i%2)), Quaternion.identity);
+                }
+                
+                points[i] = nodes[i].transform; // Initialize points[i] with the transform of the instantiated node
+                Console.WriteLine("Node " + i + " created at " + points[i].position);
+            }
+        }
+
+
     }
 
     void Update()
