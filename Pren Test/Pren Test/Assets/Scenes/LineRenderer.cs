@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 public class LineRendererController : MonoBehaviour
 {
     //public LineRenderer lineRenderer;
+    public bool IsInitialized { get; private set; } = false;
     public GameObject nodePrefab;
     public GameObject conePrefab;
     public GameObject linePrefab;
@@ -16,6 +17,7 @@ public class LineRendererController : MonoBehaviour
     public GameObject[] lines;
     public int[] coneIndices;
     public const bool FIXED_INITIATION = true;
+    public int GOAL_NODE = 0;
 
     public float DistanceMultiplier = 4;
 
@@ -32,6 +34,11 @@ public class LineRendererController : MonoBehaviour
         cones = new GameObject[MAX_CONES]; // Initialize the array with the correct size
         lines = new GameObject[MAX_LINES]; // Initialize the array with the correct size
         coneIndices = new int[MAX_CONES]; // Initialize the array with the correct size
+        if (GOAL_NODE == 0)
+        {
+        GOAL_NODE = UnityEngine.Random.Range(3, 6);
+        Debug.Log("Goal node is: " + GOAL_NODE);
+        }
 
         //lineRenderer.positionCount = nodes.Length;
         if (FIXED_INITIATION)
@@ -71,6 +78,7 @@ public class LineRendererController : MonoBehaviour
                 
             }
         }
+        IsInitialized = true;
 
 
     }
@@ -125,7 +133,7 @@ public class LineRendererController : MonoBehaviour
             int randomIndex;
             do{
             randomIndex = UnityEngine.Random.Range(1, MAX_POINTS-1);
-            } while (Array.Exists(coneIndices, element => element == randomIndex));
+            } while (Array.Exists(coneIndices, element => element == randomIndex)|| randomIndex == GOAL_NODE);
             Debug.Log("Random cone generated at index: " + randomIndex);
             coneIndices[i] = randomIndex;
             cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, 0, nodes[randomIndex].transform.position.z), Quaternion.identity);
@@ -148,6 +156,9 @@ public class LineRendererController : MonoBehaviour
             connections.Add(new Connection(4, 7));
             connections.Add(new Connection(5, 7));
             connections.Add(new Connection(6, 7));
+    }
+    public bool HasConeAtNode(int nodeIndex) {
+    return Array.Exists(coneIndices, element => element == nodeIndex);
     }
 
     public static LineRendererController Instance { get; private set; }

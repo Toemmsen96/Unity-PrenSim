@@ -1,6 +1,9 @@
 using System;
+using System.Collections;
 using Unity.VisualScripting;
+using UnityEngine.UI;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class PrenController : MonoBehaviour
 {
@@ -8,7 +11,7 @@ public class PrenController : MonoBehaviour
     public float moveSpeed = 5f;
     public float rotateSpeed = 100f;
 
-    public int goalNodeIndex = 1;
+    public int goalNodeIndex;
     
 
     private Vector3 forwardDirection = new Vector3(1,0,0);
@@ -19,6 +22,13 @@ public class PrenController : MonoBehaviour
     private DrivingMode  drivingMode = DrivingMode.start;
     private int nextNode = 0;
     private int currentNode = -1;
+    private Text infoText;
+    private Dictionary<int,String> goalNodes = new Dictionary<int, String>(){
+        {3, "C"},
+        {4, "A"},
+        {5, "B"}
+    };
+
 
     enum DrivingMode{
         start,
@@ -29,16 +39,36 @@ public class PrenController : MonoBehaviour
     }
 
 
-    void Start()
-    {
-        // Can probably be improved by using a singleton pattern or sth
+    void Start() {
+        StartCoroutine(WaitForInitialization());
+    }
+
+    private IEnumerator WaitForInitialization() {
         lineRendererController = LineRendererController.Instance;
+        GameObject canvas = GameObject.Find("Canvas");
+        if (canvas != null) {
+            GameObject infos = canvas.transform.Find("Infos").gameObject;
+            if (infos != null) {
+                infoText = infos.GetComponentInChildren<Text>();
+            }
+        }
+        while (lineRendererController == null || !lineRendererController.IsInitialized) {
+            Debug.Log("Waiting for LineRendererController to initialize...");
+            yield return null;
+        }
+        lineRendererController = LineRendererController.Instance;
+        goalNodeIndex = lineRendererController.GOAL_NODE;
+        Debug.Log("Goal node is: " + goalNodeIndex);
+        if (infoText != null) {
+            infoText.text = "Goal Node: " + goalNodes[goalNodeIndex];
+        }
+        
+        // Continue with initialization that depends on LineRendererController
     }
 
 
     void Update()
     {
-        lineRendererController = LineRendererController.Instance;
         if (isDriving && drivingMode == DrivingMode.start){
             DriveToStart();
         }
@@ -127,6 +157,7 @@ public class PrenController : MonoBehaviour
             isDriving = false;
             drivingMode = DrivingMode.none;
             Debug.Log("Reached Goal!");
+            infoText.text = "Reached Goal!";
             return;
         }
         else if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
@@ -231,7 +262,7 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
     queue.Enqueue(currentNode);
     visited.Add(currentNode);
 
-    while (queue.Count > 0) {
+       while (queue.Count > 0) {
         int node = queue.Dequeue();
         
         if (node == goalNodeIndex) {
@@ -243,17 +274,21 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
             nextNode = current;
             return;
         }
-
+    
         foreach (var connection in lineRendererController.connections) {
             if (connection.GetStart() == node && !visited.Contains(connection.GetEnd())) {
-                visited.Add(connection.GetEnd());
-                parentMap[connection.GetEnd()] = node;
-                queue.Enqueue(connection.GetEnd());
+                if (!lineRendererController.HasConeAtNode(connection.GetEnd())) {
+                    visited.Add(connection.GetEnd());
+                    parentMap[connection.GetEnd()] = node;
+                    queue.Enqueue(connection.GetEnd());
+                }
             }
             if (connection.GetEnd() == node && !visited.Contains(connection.GetStart())) {
-                visited.Add(connection.GetStart());
-                parentMap[connection.GetStart()] = node;
-                queue.Enqueue(connection.GetStart());
+                if (!lineRendererController.HasConeAtNode(connection.GetStart())) {
+                    visited.Add(connection.GetStart());
+                    parentMap[connection.GetStart()] = node;
+                    queue.Enqueue(connection.GetStart());
+                }
             }
         }
     }
