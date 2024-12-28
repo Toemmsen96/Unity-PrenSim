@@ -7,12 +7,25 @@ public class PrenController : MonoBehaviour
     private LineRendererController lineRendererController;
     public float moveSpeed = 5f;
     public float rotateSpeed = 100f;
+
+    public int goalNodeIndex = 1;
     
 
-    private Vector3 forwardDirection = new Vector3(0,1,0);
-    private Vector3 rightDirection = new Vector3(0,0,1);
+    private Vector3 forwardDirection = new Vector3(1,0,0);
+    private Vector3 rightDirection = new Vector3(0,-1,0);
     private bool isDriving = true;
-    private String DrivingMode = "start";
+    private float POSITION_TOLERANCE = 2f;
+    private Vector3 targetDirection;
+    private DrivingMode  drivingMode = DrivingMode.start;
+
+    enum DrivingMode{
+        start,
+        goal,
+        turn,
+        drive,
+        none
+    }
+
 
     void Start()
     {
@@ -24,14 +37,14 @@ public class PrenController : MonoBehaviour
     void Update()
     {
         lineRendererController = LineRendererController.Instance;
-        if (isDriving && DrivingMode == "start"){
+        if (isDriving && drivingMode == DrivingMode.start){
             DriveToStart();
         }
-        if (isDriving && DrivingMode == "goal"){
+        if (isDriving && drivingMode == DrivingMode.goal){
             DriveToGoal();
         }
-        if (isDriving && DrivingMode == "turn"){
-            TurnToNextNode();
+        if (isDriving && drivingMode == DrivingMode.turn){
+            //TurnToNextNode();
         }
         // Forward/Backward movement
         if (Input.GetKey(KeyCode.W))
@@ -58,25 +71,54 @@ public class PrenController : MonoBehaviour
         isDriving = true;
         if (IsFacingNode(lineRendererController.nodes[0].transform)){
             Debug.Log("Facing node");
-            if (lineRendererController.nodes[0].transform.position == transform.position){
-                isDriving = false;
-                DrivingMode = "goal";
+
+            if (Vector3.Distance(lineRendererController.nodes[0].transform.position, transform.position) <= POSITION_TOLERANCE)
+            {
+                Debug.Log("Reached node");
+                drivingMode = DrivingMode.goal;
+                DriveToGoal();
             }
             if (lineRendererController.nodes[0].transform.position != transform.position){
                 MoveForward();
             }
         }
         else{
-            RotateRight();
-            Debug.Log("Turning to face node");
+            targetDirection = GetDirectionToTarget(lineRendererController.nodes[0].transform);
+            TurnToNextNode(lineRendererController.nodes[0].transform);
+            //Debug.Log("Turning to face node");
 
         }
     }
     public void DriveToGoal(){
-        
+                isDriving = true;
+        if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform)){
+            Debug.Log("Facing node");
+
+            if (Vector3.Distance(lineRendererController.nodes[goalNodeIndex].transform.position, transform.position) <= POSITION_TOLERANCE)
+            {
+                isDriving = false;
+                drivingMode = DrivingMode.none;
+            }
+            if (lineRendererController.nodes[goalNodeIndex].transform.position != transform.position){
+                MoveForward();
+            }
+        }
+        else{
+            targetDirection = GetDirectionToTarget(lineRendererController.nodes[0].transform);
+            TurnToNextNode(lineRendererController.nodes[0].transform);
+            //Debug.Log("Turning to face node");
+
+        }
     }
-    public void TurnToNextNode(){
-        
+    public void TurnToNextNode(Transform node){
+            //Debug.Log("Turning to face node");
+            targetDirection = GetDirectionToTarget(node);
+            if (Vector3.Angle(transform.forward, targetDirection) > 0){
+                RotateLeft();
+            }
+            else{
+                RotateRight();
+            }        
     }
 
  
@@ -85,18 +127,40 @@ public class PrenController : MonoBehaviour
         
     }
     private bool IsFacingNode(Transform targetNode, float angleThreshold = 10f)
+    {
+        // Get direction to target and flatten to XZ plane
+        Vector3 directionToTarget = GetDirectionToTarget(targetNode);
+        Vector3 flatDirectionToTarget = new Vector3(directionToTarget.x, 0, directionToTarget.z).normalized;
+        
+        // Get forward direction flattened to XZ plane and rotate 90 degrees
+        Vector3 flatForward = new Vector3(transform.right.x, 0, transform.right.z).normalized;
+        
+        // Calculate angle between flattened directions
+        float angle = Vector3.Angle(flatForward, flatDirectionToTarget);
+        Debug.Log("XZ Plane Angle: " + angle);
+        
+        // Check if within threshold
+        return angle <= angleThreshold;
+    }
+public Vector3 GetDirectionToTarget(Transform targetNode)
 {
-    // Get direction to target
-    Vector3 directionToTarget = (targetNode.position - transform.position).normalized;
+    if (targetNode == null)
+    {
+        Debug.LogWarning("Target node is null!");
+        return Vector3.zero;
+    }
+
+    // Get positions (ignoring Y axis for 2D movement)
+    Vector3 targetPos = new Vector3(targetNode.position.x, 0, targetNode.position.z);
+    Vector3 currentPos = new Vector3(transform.position.x, 0, transform.position.z);
     
-    // Get forward direction
-    Vector3 forward = forwardDirection;
+    // Calculate direction
+    Vector3 direction = (targetPos - currentPos).normalized;
     
-    // Calculate angle between directions
-    float angle = Vector3.Angle(forward, directionToTarget);
+    // Optional: Debug visualization
+    Debug.DrawRay(currentPos, direction * 5f, Color.red);
     
-    // Check if within threshold
-    return angle <= angleThreshold;
+    return direction;
 }
 
     public void MoveForward()
