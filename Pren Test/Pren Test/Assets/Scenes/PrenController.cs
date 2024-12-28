@@ -17,6 +17,8 @@ public class PrenController : MonoBehaviour
     private float POSITION_TOLERANCE = 2f;
     private Vector3 targetDirection;
     private DrivingMode  drivingMode = DrivingMode.start;
+    private int nextNode = 0;
+    private int currentNode = -1;
 
     enum DrivingMode{
         start,
@@ -76,7 +78,10 @@ public class PrenController : MonoBehaviour
             {
                 Debug.Log("Reached node");
                 drivingMode = DrivingMode.goal;
-                DriveToGoal();
+                isDriving = false;
+                currentNode = 0;
+                FindNextPath();
+                DriveToNextNode();
             }
             if (lineRendererController.nodes[0].transform.position != transform.position){
                 MoveForward();
@@ -89,6 +94,26 @@ public class PrenController : MonoBehaviour
 
         }
     }
+    private void FindNextPath(){
+        if (currentNode == goalNodeIndex){
+            nextNode = -1;
+        }
+        else if (ConnectionExists(currentNode,goalNodeIndex)){
+            nextNode = goalNodeIndex;
+        }
+        else{
+            foreach (LineRendererController.Connection connection in lineRendererController.connections){
+                if (connection.GetStart() == currentNode){
+                    nextNode = connection.GetEnd();
+                    break;
+                }
+                if (connection.GetEnd() == currentNode){
+                    nextNode = connection.GetStart();
+                    break;
+                }
+            }
+        }
+    }
     public void DriveToGoal(){
                 isDriving = true;
         if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform)){
@@ -98,6 +123,7 @@ public class PrenController : MonoBehaviour
             {
                 isDriving = false;
                 drivingMode = DrivingMode.none;
+                Debug.Log("Reached Goal!");
             }
             if (lineRendererController.nodes[goalNodeIndex].transform.position != transform.position){
                 MoveForward();
@@ -106,6 +132,33 @@ public class PrenController : MonoBehaviour
         else{
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[0].transform);
             TurnToNextNode(lineRendererController.nodes[0].transform);
+            //Debug.Log("Turning to face node");
+
+        }
+    }
+    public void DriveToNextNode(){
+        isDriving = true;
+        if (nextNode == -1){
+            isDriving = false;
+            drivingMode = DrivingMode.none;
+            Debug.Log("Reached Goal!");
+            return;
+        }
+        if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
+            Debug.Log("Facing node");
+
+            if (Vector3.Distance(lineRendererController.nodes[nextNode].transform.position, transform.position) <= POSITION_TOLERANCE)
+            {
+                FindNextPath();
+                DriveToNextNode();
+            }
+            if (lineRendererController.nodes[nextNode].transform.position != transform.position){
+                MoveForward();
+            }
+        }
+        else{
+            targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
+            TurnToNextNode(lineRendererController.nodes[nextNode].transform);
             //Debug.Log("Turning to face node");
 
         }
@@ -119,6 +172,13 @@ public class PrenController : MonoBehaviour
             else{
                 RotateRight();
             }        
+    }
+
+    public bool ConnectionExists(int nodeA, int nodeB){
+        int min = Math.Min(nodeA, nodeB);
+        int max = Math.Max(nodeA, nodeB);
+        Debug.Log("Checking for connection between " + min + " and " + max);
+        return lineRendererController.connections.Exists(x => x.GetStart() == min && x.GetEnd() == max);
     }
 
  
