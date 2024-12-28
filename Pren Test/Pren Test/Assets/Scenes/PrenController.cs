@@ -14,7 +14,7 @@ public class PrenController : MonoBehaviour
     private Vector3 forwardDirection = new Vector3(1,0,0);
     private Vector3 rightDirection = new Vector3(0,-1,0);
     private bool isDriving = true;
-    private float POSITION_TOLERANCE = 2f;
+    public float POSITION_TOLERANCE = 2f;
     private Vector3 targetDirection;
     private DrivingMode  drivingMode = DrivingMode.start;
     private int nextNode = 0;
@@ -31,7 +31,7 @@ public class PrenController : MonoBehaviour
 
     void Start()
     {
-        // Empty as we don't need per-frame updates
+        // Can probably be improved by using a singleton pattern or sth
         lineRendererController = LineRendererController.Instance;
     }
 
@@ -47,6 +47,9 @@ public class PrenController : MonoBehaviour
         }
         if (isDriving && drivingMode == DrivingMode.turn){
             //TurnToNextNode();
+        }
+        if (isDriving && drivingMode == DrivingMode.drive){
+            DriveToNextNode();
         }
         // Forward/Backward movement
         if (Input.GetKey(KeyCode.W))
@@ -77,7 +80,7 @@ public class PrenController : MonoBehaviour
             if (Vector3.Distance(lineRendererController.nodes[0].transform.position, transform.position) <= POSITION_TOLERANCE)
             {
                 Debug.Log("Reached node");
-                drivingMode = DrivingMode.goal;
+                drivingMode = DrivingMode.drive;
                 isDriving = false;
                 currentNode = 0;
                 FindNextPath();
@@ -94,26 +97,8 @@ public class PrenController : MonoBehaviour
 
         }
     }
-    private void FindNextPath(){
-        if (currentNode == goalNodeIndex){
-            nextNode = -1;
-        }
-        else if (ConnectionExists(currentNode,goalNodeIndex)){
-            nextNode = goalNodeIndex;
-        }
-        else{
-            foreach (LineRendererController.Connection connection in lineRendererController.connections){
-                if (connection.GetStart() == currentNode){
-                    nextNode = connection.GetEnd();
-                    break;
-                }
-                if (connection.GetEnd() == currentNode){
-                    nextNode = connection.GetStart();
-                    break;
-                }
-            }
-        }
-    }
+
+    
     public void DriveToGoal(){
                 isDriving = true;
         if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform)){
@@ -130,8 +115,8 @@ public class PrenController : MonoBehaviour
             }
         }
         else{
-            targetDirection = GetDirectionToTarget(lineRendererController.nodes[0].transform);
-            TurnToNextNode(lineRendererController.nodes[0].transform);
+            targetDirection = GetDirectionToTarget(lineRendererController.nodes[goalNodeIndex].transform);
+            TurnToNextNode(lineRendererController.nodes[goalNodeIndex].transform);
             //Debug.Log("Turning to face node");
 
         }
@@ -144,15 +129,16 @@ public class PrenController : MonoBehaviour
             Debug.Log("Reached Goal!");
             return;
         }
-        if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
+        else if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
             Debug.Log("Facing node");
 
             if (Vector3.Distance(lineRendererController.nodes[nextNode].transform.position, transform.position) <= POSITION_TOLERANCE)
             {
+                Debug.Log("Reached node");
+                currentNode = nextNode;
                 FindNextPath();
-                DriveToNextNode();
             }
-            if (lineRendererController.nodes[nextNode].transform.position != transform.position){
+            else if (lineRendererController.nodes[nextNode].transform.position != transform.position){
                 MoveForward();
             }
         }
@@ -166,7 +152,7 @@ public class PrenController : MonoBehaviour
     public void TurnToNextNode(Transform node){
             //Debug.Log("Turning to face node");
             targetDirection = GetDirectionToTarget(node);
-            if (Vector3.Angle(transform.forward, targetDirection) > 0){
+            if (GetAngleToTarget(node) > 0){
                 RotateLeft();
             }
             else{
@@ -184,24 +170,32 @@ public class PrenController : MonoBehaviour
  
 
     public void LiftBarrier(){
-        
+        //TODO: Implement
     }
-    private bool IsFacingNode(Transform targetNode, float angleThreshold = 10f)
+    private bool IsFacingNode(Transform targetNode, float angleThreshold = 5f)
     {
-        // Get direction to target and flatten to XZ plane
-        Vector3 directionToTarget = GetDirectionToTarget(targetNode);
-        Vector3 flatDirectionToTarget = new Vector3(directionToTarget.x, 0, directionToTarget.z).normalized;
-        
-        // Get forward direction flattened to XZ plane and rotate 90 degrees
-        Vector3 flatForward = new Vector3(transform.right.x, 0, transform.right.z).normalized;
-        
-        // Calculate angle between flattened directions
-        float angle = Vector3.Angle(flatForward, flatDirectionToTarget);
-        Debug.Log("XZ Plane Angle: " + angle);
+        float angle = GetAngleToTarget(targetNode);
+        angle = Mathf.Abs(angle);
+        Debug.Log("Absolute Angle: " + angle);
         
         // Check if within threshold
         return angle <= angleThreshold;
     }
+    private float GetAngleToTarget(Transform targetNode)
+{
+         // Get direction to target and flatten to XZ plane
+        Vector3 directionToTarget = GetDirectionToTarget(targetNode);
+        Vector3 flatDirectionToTarget = new Vector3(directionToTarget.x, 0, directionToTarget.z).normalized;
+        
+        // Get forward direction flattened to XZ plane
+        Vector3 flatForward = new Vector3(transform.right.x, 0, transform.right.z).normalized;
+        
+        // Calculate signed angle between directions (gives -180 to +180)
+        float angle = Vector3.SignedAngle(flatForward, flatDirectionToTarget, Vector3.up);
+        
+        Debug.Log("Angle: " + angle);
+        return angle;
+}
 public Vector3 GetDirectionToTarget(Transform targetNode)
 {
     if (targetNode == null)
@@ -216,12 +210,67 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
     
     // Calculate direction
     Vector3 direction = (targetPos - currentPos).normalized;
+    //Debug.Log("Direction: " + direction);
     
     // Optional: Debug visualization
     Debug.DrawRay(currentPos, direction * 5f, Color.red);
     
     return direction;
 }
+
+    private void FindNextPath() {
+    if (currentNode == goalNodeIndex) {
+        nextNode = -1;
+        return;
+    }
+
+    var queue = new System.Collections.Generic.Queue<int>();
+    var visited = new System.Collections.Generic.HashSet<int>();
+    var parentMap = new System.Collections.Generic.Dictionary<int, int>();
+    
+    queue.Enqueue(currentNode);
+    visited.Add(currentNode);
+
+    while (queue.Count > 0) {
+        int node = queue.Dequeue();
+        
+        if (node == goalNodeIndex) {
+            // Reconstruct path from goal to current
+            int current = goalNodeIndex;
+            while (parentMap[current] != currentNode) {
+                current = parentMap[current];
+            }
+            nextNode = current;
+            return;
+        }
+
+        foreach (var connection in lineRendererController.connections) {
+            if (connection.GetStart() == node && !visited.Contains(connection.GetEnd())) {
+                visited.Add(connection.GetEnd());
+                parentMap[connection.GetEnd()] = node;
+                queue.Enqueue(connection.GetEnd());
+            }
+            if (connection.GetEnd() == node && !visited.Contains(connection.GetStart())) {
+                visited.Add(connection.GetStart());
+                parentMap[connection.GetStart()] = node;
+                queue.Enqueue(connection.GetStart());
+            }
+        }
+    }
+
+    // If no path to goal found, use existing connection logic
+    foreach (var connection in lineRendererController.connections) {
+        if (connection.GetStart() == currentNode) {
+            nextNode = connection.GetEnd();
+            break;
+        }
+        if (connection.GetEnd() == currentNode) {
+            nextNode = connection.GetStart();
+            break;
+        }
+    }
+}
+
 
     public void MoveForward()
     {

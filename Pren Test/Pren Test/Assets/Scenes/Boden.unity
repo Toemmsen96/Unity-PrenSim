@@ -1257,6 +1257,7 @@ MonoBehaviour:
   moveSpeed: 5
   rotateSpeed: 100
   goalNodeIndex: 1
+  POSITION_TOLERANCE: 1.5
 --- !u!1 &1697935061
 GameObject:
   m_ObjectHideFlags: 0
@@ -1492,7 +1493,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5
   rotateSpeed: 100
-  goalNodeIndex: 7
+  goalNodeIndex: 5
+  POSITION_TOLERANCE: 1.5
 --- !u!4 &2078082468
 Transform:
   m_ObjectHideFlags: 0
