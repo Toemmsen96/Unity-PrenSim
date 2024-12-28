@@ -1259,6 +1259,7 @@ MonoBehaviour:
   moveSpeed: 5
   rotateSpeed: 100
   goalNodeIndex: 1
+  explosionPrefab: {fileID: 0}
   POSITION_TOLERANCE: 1.5
 --- !u!1 &1697935061
 GameObject:
@@ -1575,6 +1576,7 @@ MonoBehaviour:
   moveSpeed: 5
   rotateSpeed: 100
   goalNodeIndex: 5
+  explosionPrefab: {fileID: 5266378106977556716, guid: 7bc7878c49be95d438acc3a15e505a99, type: 3}
   POSITION_TOLERANCE: 1.5
 --- !u!4 &2078082468
 Transform:
