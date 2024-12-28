@@ -12,7 +12,7 @@ public class PrenController : MonoBehaviour
     public float rotateSpeed = 100f;
 
     public int goalNodeIndex;
-    
+    public GameObject explosionPrefab;
 
     private Vector3 forwardDirection = new Vector3(1,0,0);
     private Vector3 rightDirection = new Vector3(0,-1,0);
@@ -158,6 +158,7 @@ public class PrenController : MonoBehaviour
             drivingMode = DrivingMode.none;
             Debug.Log("Reached Goal!");
             infoText.text = "Reached Goal!";
+            Instantiate(explosionPrefab, transform.position, Quaternion.identity);
             return;
         }
         else if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
