@@ -6,6 +6,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using UnityEditor.PackageManager.Requests;
+using UnityEditor.MemoryProfiler;
 
 public class PrenController : MonoBehaviour
 {
@@ -21,6 +22,8 @@ public class PrenController : MonoBehaviour
     private Vector3 rightDirection = new Vector3(0,-1,0);
     private bool isDriving = true;
     public float POSITION_TOLERANCE = 2f;
+    public float DEFAULT_ANGLE_THRESHOLD = 5f;
+    public float LINE_THRESHOLD = 1f;
     public float BARRIER_DISTANCE = 1f;
     private Vector3 targetDirection;
     private DrivingMode  drivingMode = DrivingMode.start;
@@ -49,16 +52,17 @@ public class PrenController : MonoBehaviour
         turn,
         drive,
         barriermode,
+        recenter,
         none
     }
     private enum BarrierLiftState {
-    LIFTING,
-    TURNING_WITH_BARRIER,
-    BACKING_UP,
-    LOWERING,
-    TURNING_TO_NEXT,
-    DONE
-}
+        LIFTING,
+        TURNING_WITH_BARRIER,
+        BACKING_UP,
+        LOWERING,
+        TURNING_TO_NEXT,
+        DONE
+    }
 
 
     void Start() {
@@ -98,7 +102,7 @@ public class PrenController : MonoBehaviour
             DriveToGoal();
         }
         if (isDriving && drivingMode == DrivingMode.turn){
-            //TurnToNextNode();
+            //TurnToTransform();
         }
         if (isDriving && drivingMode == DrivingMode.drive){
             DriveToNextNode();
@@ -143,8 +147,10 @@ public class PrenController : MonoBehaviour
     }
     public LineRendererController.Barrier IsInFrontOfBarrier(){
         foreach (var barrier in lineRendererController.barriers){
-            if (Vector3.Distance(barrier.barrierObject.transform.position, transform.position) <= BARRIER_DISTANCE){
-                if ((barrier.GetConnection().GetStart() == currentNode || barrier.GetConnection().GetEnd() == currentNode)&& (barrier.GetConnection().GetStart() == nextNode || barrier.GetConnection().GetEnd() == nextNode)){
+            Vector2 barrierPos2D = new Vector2(barrier.barrierObject.transform.position.x, barrier.barrierObject.transform.position.z);
+            Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+            if (Vector3.Distance(barrierPos2D,robotPos2D) <= BARRIER_DISTANCE){
+                if ((barrier.GetConnection().GetStart() == currentNode || barrier.GetConnection().GetEnd() == currentNode)&& (barrier.GetConnection().GetStart() == nextNode || barrier.GetConnection().GetEnd() == nextNode) && IsFacingNode(barrier.barrierObject.transform, 90)){
                     moveBarrier = true;
                     return barrier;
                 }
@@ -155,10 +161,12 @@ public class PrenController : MonoBehaviour
 
     public void DriveToStart(){
         isDriving = true;
-        if (IsFacingNode(lineRendererController.nodes[0].transform)){
+        if (IsFacingNode(lineRendererController.nodes[0].transform, DEFAULT_ANGLE_THRESHOLD)){
             Debug.Log("Facing node");
 
-            if (Vector3.Distance(lineRendererController.nodes[0].transform.position, transform.position) <= POSITION_TOLERANCE)
+            Vector2 nodePos2D = new Vector2(lineRendererController.nodes[0].transform.position.x, lineRendererController.nodes[0].transform.position.z);
+            Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+            if (Vector2.Distance(nodePos2D, robotPos2D) <= POSITION_TOLERANCE)
             {
                 Debug.Log("Reached node");
                 drivingMode = DrivingMode.drive;
@@ -174,7 +182,7 @@ public class PrenController : MonoBehaviour
         }
         else{
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[0].transform);
-            TurnToNextNode(lineRendererController.nodes[0].transform);
+            TurnToTransform(lineRendererController.nodes[0].transform);
             //Debug.Log("Turning to face node");
 
         }
@@ -182,11 +190,13 @@ public class PrenController : MonoBehaviour
 
     
     public void DriveToGoal(){
-                isDriving = true;
-        if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform)){
+        isDriving = true;
+        if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform,DEFAULT_ANGLE_THRESHOLD)){
             Debug.Log("Facing node");
 
-            if (Vector3.Distance(lineRendererController.nodes[goalNodeIndex].transform.position, transform.position) <= POSITION_TOLERANCE)
+            Vector2 nodePos2D = new Vector2(lineRendererController.nodes[goalNodeIndex].transform.position.x, lineRendererController.nodes[goalNodeIndex].transform.position.z);
+            Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+            if (Vector2.Distance(nodePos2D,robotPos2D) <= POSITION_TOLERANCE)
             {
                 isDriving = false;
                 drivingMode = DrivingMode.none;
@@ -198,16 +208,116 @@ public class PrenController : MonoBehaviour
         }
         else{
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[goalNodeIndex].transform);
-            TurnToNextNode(lineRendererController.nodes[goalNodeIndex].transform);
+            TurnToTransform(lineRendererController.nodes[goalNodeIndex].transform);
             //Debug.Log("Turning to face node");
 
         }
     }
+    public bool IsOnLine(LineRendererController.Connection connection, float threshold) {
+        if (connection == null) {
+            return true;
+        }
+        Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+        Vector2 startNodePos2D = new Vector2(lineRendererController.nodes[connection.GetStart()].transform.position.x, 
+                                           lineRendererController.nodes[connection.GetStart()].transform.position.z);
+        Vector2 endNodePos2D = new Vector2(lineRendererController.nodes[connection.GetEnd()].transform.position.x, 
+                                         lineRendererController.nodes[connection.GetEnd()].transform.position.z);
+    
+        Vector2 lineDirection = (endNodePos2D - startNodePos2D).normalized;
+        Vector2 robotToStart = robotPos2D - startNodePos2D;
+        
+        float dotProduct = Vector2.Dot(robotToStart, lineDirection);
+        Vector2 projection = startNodePos2D + lineDirection * dotProduct;
+        float distance = Vector2.Distance(robotPos2D, projection);
+        
+        return distance < threshold;
+    }
+
+    public Transform GetClosestPointOnLine(LineRendererController.Connection connection) {
+        Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+        Vector2 startNodePos2D = new Vector2(lineRendererController.nodes[connection.GetStart()].transform.position.x, 
+                                           lineRendererController.nodes[connection.GetStart()].transform.position.z);
+        Vector2 endNodePos2D = new Vector2(lineRendererController.nodes[connection.GetEnd()].transform.position.x, 
+                                         lineRendererController.nodes[connection.GetEnd()].transform.position.z);
+    
+        Vector2 lineDirection = (endNodePos2D - startNodePos2D).normalized;
+        Vector2 robotToStart = robotPos2D - startNodePos2D;
+        float dotProduct = Vector2.Dot(robotToStart, lineDirection);
+        
+        // Clamp projection to line segment
+        float lineLength = Vector2.Distance(startNodePos2D, endNodePos2D);
+        dotProduct = Mathf.Clamp(dotProduct, 0, lineLength);
+        
+        Vector2 projection = startNodePos2D + lineDirection * dotProduct;
+        
+        // Create temporary GameObject at projection point
+        GameObject projectionPoint = new GameObject("ProjectionPoint");
+        projectionPoint.transform.position = new Vector3(projection.x, transform.position.y, projection.y);
+        
+        return projectionPoint.transform;
+    }
+
+    public LineRendererController.Connection GetConnection(int nodeA, int nodeB){
+        foreach (var connection in lineRendererController.connections){
+            if (connection.GetStart() == nodeA && connection.GetEnd() == nodeB){
+                return connection;
+            }
+            if (connection.GetStart() == nodeB && connection.GetEnd() == nodeA){
+                return connection;
+            }
+        }
+        return null;
+    }
+
+    public LineRendererController.Connection GetClosestConnection(){
+        float minDistance = float.MaxValue;
+        LineRendererController.Connection closestConnection = null;
+        foreach (var connection in lineRendererController.connections){
+            Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+            Vector2 startNodePos2D = new Vector2(lineRendererController.nodes[connection.GetStart()].transform.position.x, 
+                                           lineRendererController.nodes[connection.GetStart()].transform.position.z);
+            Vector2 endNodePos2D = new Vector2(lineRendererController.nodes[connection.GetEnd()].transform.position.x, 
+                                         lineRendererController.nodes[connection.GetEnd()].transform.position.z);
+            Vector2 lineDirection = (endNodePos2D - startNodePos2D).normalized;
+            Vector2 robotToStart = robotPos2D - startNodePos2D;
+            float dotProduct = Vector2.Dot(robotToStart, lineDirection);
+            Vector2 projection = startNodePos2D + lineDirection * dotProduct;
+            float distance = Vector2.Distance(robotPos2D, projection);
+            if (distance < minDistance){
+                minDistance = distance;
+                closestConnection = connection;
+            }
+        }
+        return closestConnection;
+    }
+
+    public void RecenterOnLine(){
+        TurnToTransform(GetClosestPointOnLine(GetConnection(currentNode, nextNode)));
+        MoveForward();
+        if (IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD)){
+            TurnToTransform(lineRendererController.nodes[nextNode].transform);
+        }
+        //TODO
+    }
+
+
     public void DriveToNextNode(){
         isDriving = true;
         barrierToMove = IsInFrontOfBarrier();
-        if (nextNode == -1){
+        Debug.Log("IsOnLine: " + IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD));
+        if (currentNode == goalNodeIndex){
             Finish();
+            return;
+        }
+        else if (!IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD)){
+            Debug.Log("Not on line");
+            RecenterOnLine();
+            return;
+
+        }
+        else if (nextNode == -1){
+            isDriving = false;
+            Debug.Log("No path found");
             return;
         }
         else if (barrierToMove != null){
@@ -218,10 +328,11 @@ public class PrenController : MonoBehaviour
             LiftBarrier(barrierToMove);
             return;
         }
-        else if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
+        else if (IsFacingNode(lineRendererController.nodes[nextNode].transform, DEFAULT_ANGLE_THRESHOLD)){
             Debug.Log("Facing node");
-
-            if (Vector3.Distance(lineRendererController.nodes[nextNode].transform.position, transform.position) <= POSITION_TOLERANCE)
+            Vector2 nodePos2D = new Vector2(lineRendererController.nodes[nextNode].transform.position.x, lineRendererController.nodes[nextNode].transform.position.z);
+            Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
+            if (Vector2.Distance(nodePos2D,robotPos2D) <= POSITION_TOLERANCE)
             {
                 Debug.Log("Reached node");
                 currentNode = nextNode;
@@ -233,12 +344,12 @@ public class PrenController : MonoBehaviour
         }
         else{
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
-            TurnToNextNode(lineRendererController.nodes[nextNode].transform);
+            TurnToTransform(lineRendererController.nodes[nextNode].transform);
             //Debug.Log("Turning to face node");
 
         }
     }
-    public void TurnToNextNode(Transform node){
+    public void TurnToTransform(Transform node){
             //Debug.Log("Turning to face node");
             targetDirection = GetDirectionToTarget(node);
             if (GetAngleToTarget(node) > 0){
@@ -260,7 +371,7 @@ public class PrenController : MonoBehaviour
 public void LiftBarrier(LineRendererController.Barrier barrier) {
     if (!moveBarrier) {
         targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
-        TurnToNextNode(lineRendererController.nodes[nextNode].transform);
+        TurnToTransform(lineRendererController.nodes[nextNode].transform);
         DriveToNextNode();
         return;
     }
@@ -281,8 +392,8 @@ public void LiftBarrier(LineRendererController.Barrier barrier) {
             break;
         
         case BarrierLiftState.TURNING_WITH_BARRIER:
-            TurnToNextNode(lineRendererController.nodes[currentNode].transform);
-            if (IsFacingNode(lineRendererController.nodes[currentNode].transform)) {
+            TurnToTransform(lineRendererController.nodes[currentNode].transform);
+            if (IsFacingNode(lineRendererController.nodes[currentNode].transform, DEFAULT_ANGLE_THRESHOLD)) {
                 backupStartTime = Time.time;
                 barrierState = BarrierLiftState.BACKING_UP;
             }
@@ -307,8 +418,8 @@ public void LiftBarrier(LineRendererController.Barrier barrier) {
 
         case BarrierLiftState.TURNING_TO_NEXT:
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
-            TurnToNextNode(lineRendererController.nodes[nextNode].transform);
-            if (IsFacingNode(lineRendererController.nodes[nextNode].transform)) {
+            TurnToTransform(lineRendererController.nodes[nextNode].transform);
+            if (IsFacingNode(lineRendererController.nodes[nextNode].transform, DEFAULT_ANGLE_THRESHOLD)) {
                 barrierState = BarrierLiftState.DONE;
                 moveBarrier = false;
                 isDriving = true;
@@ -377,7 +488,7 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
     queue.Enqueue(currentNode);
     visited.Add(currentNode);
 
-       while (queue.Count > 0) {
+    while (queue.Count > 0) {
         int node = queue.Dequeue();
         
         if (node == goalNodeIndex) {
@@ -391,34 +502,44 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
         }
     
         foreach (var connection in lineRendererController.connections) {
-            if (connection.GetStart() == node && !visited.Contains(connection.GetEnd())) {
-                if (!lineRendererController.HasConeAtNode(connection.GetEnd())) {
-                    visited.Add(connection.GetEnd());
-                    parentMap[connection.GetEnd()] = node;
-                    queue.Enqueue(connection.GetEnd());
+            if (connection.IsEnabled()){
+                Debug.Log("Checking connection between " + connection.GetStart() + " and " + connection.GetEnd());
+                if (connection.GetStart() == node && !visited.Contains(connection.GetEnd())) {
+                    if (!lineRendererController.HasConeAtNode(connection.GetEnd()) ) {
+                        visited.Add(connection.GetEnd());
+                        parentMap[connection.GetEnd()] = node;
+                        queue.Enqueue(connection.GetEnd());
+                        Debug.Log("Adding " + connection.GetEnd() + " to queue");
+                    }
                 }
-            }
-            if (connection.GetEnd() == node && !visited.Contains(connection.GetStart())) {
-                if (!lineRendererController.HasConeAtNode(connection.GetStart())) {
-                    visited.Add(connection.GetStart());
-                    parentMap[connection.GetStart()] = node;
-                    queue.Enqueue(connection.GetStart());
+                if (connection.GetEnd() == node && !visited.Contains(connection.GetStart())) {
+                    if (!lineRendererController.HasConeAtNode(connection.GetStart())) {
+                        visited.Add(connection.GetStart());
+                        parentMap[connection.GetStart()] = node;
+                        queue.Enqueue(connection.GetStart());
+                        Debug.Log("Adding " + connection.GetStart() + " to queue");
+                    }
                 }
             }
         }
     }
-
-    // If no path to goal found, use existing connection logic
-    foreach (var connection in lineRendererController.connections) {
-        if (connection.GetStart() == currentNode) {
-            nextNode = connection.GetEnd();
-            break;
+    Debug.Log("No path found");
+    infoText.text = "No path found!";
+    nextNode = -1;
+/*
+        // If no path to goal found, use existing connection logic
+        foreach (var connection in lineRendererController.connections) {
+            Debug.Log("Checking connection between " + connection.GetStart() + " and " + connection.GetEnd());
+            if (connection.GetStart() == currentNode) {
+                nextNode = connection.GetEnd();
+                break;
+            }
+            if (connection.GetEnd() == currentNode) {
+                nextNode = connection.GetStart();
+                break;
+            }
         }
-        if (connection.GetEnd() == currentNode) {
-            nextNode = connection.GetStart();
-            break;
-        }
-    }
+        */
     }
 
     public void Finish(){
@@ -452,5 +573,6 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
     public void Reset(){
         lineRendererController.ResetField();
         Start();
+        drivingMode = DrivingMode.start;
     }
 }

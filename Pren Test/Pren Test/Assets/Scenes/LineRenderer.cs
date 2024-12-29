@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.ConstrainedExecution;
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -124,6 +125,11 @@ public class LineRendererController : MonoBehaviour
         for (int i = 0; i < MAX_BARRIERS && availableConnections.Count > 0; i++) {
             int randomIndex = UnityEngine.Random.Range(0, availableConnections.Count);
             Connection selectedConnection = availableConnections[randomIndex];
+            if (!selectedConnection.IsEnabled())
+            {
+                i--;
+                continue;
+            }
             
             // Get node positions
             Vector3 startPos = nodes[selectedConnection.GetStart()].transform.position;
@@ -275,6 +281,7 @@ public class LineRendererController : MonoBehaviour
             {
                 Destroy(barrier.barrierObject);
             }
+            IsInitialized = false;
             connections.Clear();
             barriers.Clear();
             Start();
