@@ -4,6 +4,8 @@ using Unity.VisualScripting;
 using UnityEngine.UI;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using UnityEditor.PackageManager.Requests;
 
 public class PrenController : MonoBehaviour
 {
@@ -13,16 +15,27 @@ public class PrenController : MonoBehaviour
 
     public int goalNodeIndex;
     public GameObject explosionPrefab;
+    public bool explode = false;
 
     private Vector3 forwardDirection = new Vector3(1,0,0);
     private Vector3 rightDirection = new Vector3(0,-1,0);
     private bool isDriving = true;
     public float POSITION_TOLERANCE = 2f;
+    public float BARRIER_DISTANCE = 1f;
     private Vector3 targetDirection;
     private DrivingMode  drivingMode = DrivingMode.start;
     private int nextNode = 0;
     private int currentNode = -1;
     private Text infoText;
+    public bool moveBarrier = false;
+    private BarrierLiftState barrierState = BarrierLiftState.LIFTING;
+    private float backupStartTime;
+    public float BACKUP_DURATION = 1.0f;
+    private LineRendererController.Barrier barrierToMove;
+    private GameObject tempBarrier;
+    private LineRendererController.Barrier originalBarrier;
+
+
     private Dictionary<int,String> goalNodes = new Dictionary<int, String>(){
         {3, "C"},
         {4, "A"},
@@ -35,8 +48,17 @@ public class PrenController : MonoBehaviour
         goal,
         turn,
         drive,
+        barriermode,
         none
     }
+    private enum BarrierLiftState {
+    LIFTING,
+    TURNING_WITH_BARRIER,
+    BACKING_UP,
+    LOWERING,
+    TURNING_TO_NEXT,
+    DONE
+}
 
 
     void Start() {
@@ -81,6 +103,9 @@ public class PrenController : MonoBehaviour
         if (isDriving && drivingMode == DrivingMode.drive){
             DriveToNextNode();
         }
+        if (!isDriving && drivingMode == DrivingMode.barriermode){
+            LiftBarrier(IsInFrontOfBarrier());
+        }
         // Forward/Backward movement
         if (Input.GetKey(KeyCode.W))
         {
@@ -100,6 +125,32 @@ public class PrenController : MonoBehaviour
         {
             RotateRight();
         }
+        if (Input.GetKeyDown(KeyCode.R)){
+            infoText.text = "Restarting...";
+            drivingMode = DrivingMode.start;
+            DriveToStart();
+        }
+        if (Input.GetKeyDown(KeyCode.G)){
+            infoText.text = "Driving to goal...";
+            drivingMode = DrivingMode.goal;
+            DriveToGoal();
+        }
+        if (Input.GetKeyDown(KeyCode.E)){
+            infoText.text = "Resetting...";
+            drivingMode = DrivingMode.none;
+            Reset();
+        }
+    }
+    public LineRendererController.Barrier IsInFrontOfBarrier(){
+        foreach (var barrier in lineRendererController.barriers){
+            if (Vector3.Distance(barrier.barrierObject.transform.position, transform.position) <= BARRIER_DISTANCE){
+                if ((barrier.GetConnection().GetStart() == currentNode || barrier.GetConnection().GetEnd() == currentNode)&& (barrier.GetConnection().GetStart() == nextNode || barrier.GetConnection().GetEnd() == nextNode)){
+                    moveBarrier = true;
+                    return barrier;
+                }
+            }
+        }
+        return null;
     }
 
     public void DriveToStart(){
@@ -113,6 +164,7 @@ public class PrenController : MonoBehaviour
                 drivingMode = DrivingMode.drive;
                 isDriving = false;
                 currentNode = 0;
+                infoText.text = "Goal Node: " + goalNodes[goalNodeIndex];
                 FindNextPath();
                 DriveToNextNode();
             }
@@ -153,12 +205,17 @@ public class PrenController : MonoBehaviour
     }
     public void DriveToNextNode(){
         isDriving = true;
+        barrierToMove = IsInFrontOfBarrier();
         if (nextNode == -1){
+            Finish();
+            return;
+        }
+        else if (barrierToMove != null){
+            Debug.Log("Barrier in front");
+            drivingMode = DrivingMode.barriermode;
+            barrierState = BarrierLiftState.LIFTING;
             isDriving = false;
-            drivingMode = DrivingMode.none;
-            Debug.Log("Reached Goal!");
-            infoText.text = "Reached Goal!";
-            Instantiate(explosionPrefab, transform.position, Quaternion.identity);
+            LiftBarrier(barrierToMove);
             return;
         }
         else if (IsFacingNode(lineRendererController.nodes[nextNode].transform)){
@@ -200,10 +257,67 @@ public class PrenController : MonoBehaviour
     }
 
  
-
-    public void LiftBarrier(){
-        //TODO: Implement
+public void LiftBarrier(LineRendererController.Barrier barrier) {
+    if (!moveBarrier) {
+        targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
+        TurnToNextNode(lineRendererController.nodes[nextNode].transform);
+        DriveToNextNode();
+        return;
     }
+
+    switch (barrierState) {
+        case BarrierLiftState.LIFTING:
+            if (tempBarrier == null) {
+                originalBarrier = barrier;
+                tempBarrier = GameObject.Instantiate(barrier.GetBarrier(), barrier.GetBarrier().transform.position, barrier.GetBarrier().transform.rotation);
+                originalBarrier.SetActive(false);
+            }
+            
+            tempBarrier.transform.Translate(Vector3.up * 2f * Time.deltaTime);
+            if (tempBarrier.transform.position.y >= 0.5f) {
+                tempBarrier.transform.SetParent(transform);
+                barrierState = BarrierLiftState.TURNING_WITH_BARRIER;
+            }
+            break;
+        
+        case BarrierLiftState.TURNING_WITH_BARRIER:
+            TurnToNextNode(lineRendererController.nodes[currentNode].transform);
+            if (IsFacingNode(lineRendererController.nodes[currentNode].transform)) {
+                backupStartTime = Time.time;
+                barrierState = BarrierLiftState.BACKING_UP;
+            }
+            break;
+        case BarrierLiftState.BACKING_UP:
+            if (Time.time - backupStartTime >= BACKUP_DURATION) {
+                barrierState = BarrierLiftState.LOWERING;
+            }
+            MoveBackward();
+            break;
+        
+        case BarrierLiftState.LOWERING:
+            tempBarrier.transform.SetParent(null);
+            tempBarrier.transform.Translate(Vector3.down * 2f * Time.deltaTime);
+            MoveBackward();
+            if (tempBarrier.transform.position.y <= 0.25f) {
+                GameObject.Destroy(tempBarrier);
+                originalBarrier.SetActive(true);
+                barrierState = BarrierLiftState.TURNING_TO_NEXT;
+            }
+            break;
+
+        case BarrierLiftState.TURNING_TO_NEXT:
+            targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
+            TurnToNextNode(lineRendererController.nodes[nextNode].transform);
+            if (IsFacingNode(lineRendererController.nodes[nextNode].transform)) {
+                barrierState = BarrierLiftState.DONE;
+                moveBarrier = false;
+                isDriving = true;
+                drivingMode = DrivingMode.drive;
+                DriveToNextNode();
+            }
+            break;
+    }
+}
     private bool IsFacingNode(Transform targetNode, float angleThreshold = 5f)
     {
         float angle = GetAngleToTarget(targetNode);
@@ -305,7 +419,15 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
             break;
         }
     }
-}
+    }
+
+    public void Finish(){
+        isDriving = false;
+        drivingMode = DrivingMode.none;
+        infoText.text = "Reached Goal!";
+        Debug.Log("Reached Goal!");
+        if (explode) Instantiate(explosionPrefab, transform.position, Quaternion.identity);
+    }
 
 
     public void MoveForward()
@@ -326,5 +448,9 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
     public void RotateRight()
     {
         transform.Rotate(rightDirection, rotateSpeed * Time.deltaTime);
+    }
+    public void Reset(){
+        lineRendererController.ResetField();
+        Start();
     }
 }

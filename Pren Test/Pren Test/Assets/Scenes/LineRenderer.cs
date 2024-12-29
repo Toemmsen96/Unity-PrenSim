@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.ConstrainedExecution;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -9,23 +10,29 @@ public class LineRendererController : MonoBehaviour
     public bool IsInitialized { get; private set; } = false;
     public GameObject nodePrefab;
     public GameObject conePrefab;
+    public GameObject barrierPrefab;
     public GameObject linePrefab;
     public List<Connection> connections = new List<Connection>();
+    public List<Barrier> barriers = new List<Barrier>();
 
     public GameObject[] nodes;
     public GameObject[] cones;
     public GameObject[] lines;
     public int[] coneIndices;
-    public const bool FIXED_INITIATION = true;
-    public int GOAL_NODE = 0;
+    public  bool FIXED_INITIATION = true;
+    public int GOAL_NODE = 0; // cant be 0, randomizes if 0
+
+    public int DisableConnectionsAmount = 0;
 
     public float DistanceMultiplier = 4;
 
-    public const int MAX_CONES = 2;
+    public int MAX_CONES = 2;
 
-    public const int MAX_POINTS = 8;
+    public int MAX_BARRIERS = 2;
 
-    public const int MAX_LINES = 18;
+    public int MAX_POINTS = 8;
+
+    public int MAX_LINES = 15;
 
     void Start()
     {
@@ -60,8 +67,8 @@ public class LineRendererController : MonoBehaviour
             }
             GenerateRandomCones();
             GenerateConnections();
-
-
+            DisableRandomConnections();
+            GenerateRandomBarriers();
 
         }
         else{
@@ -99,6 +106,47 @@ public class LineRendererController : MonoBehaviour
         Vector3 scale = connector.transform.localScale;
         scale.z = distance;  // Assuming object's forward axis is Z
         connector.transform.localScale = scale;
+    }
+    public void DisableRandomConnections(){
+        List<Connection> availableConnections = new List<Connection>(connections);
+        for (int i = 0; i < DisableConnectionsAmount && availableConnections.Count > 0; i++) {
+            int randomIndex = UnityEngine.Random.Range(0, availableConnections.Count);
+            Connection selectedConnection = availableConnections[randomIndex];
+            selectedConnection.Disable();
+            availableConnections.RemoveAt(randomIndex);
+        }
+    }
+
+    public void GenerateRandomBarriers() {
+        List<Connection> availableConnections = new List<Connection>(connections);
+        List<Connection> barrierConnections = new List<Connection>();
+        
+        for (int i = 0; i < MAX_BARRIERS && availableConnections.Count > 0; i++) {
+            int randomIndex = UnityEngine.Random.Range(0, availableConnections.Count);
+            Connection selectedConnection = availableConnections[randomIndex];
+            
+            // Get node positions
+            Vector3 startPos = nodes[selectedConnection.GetStart()].transform.position;
+            Vector3 endPos = nodes[selectedConnection.GetEnd()].transform.position;
+            
+            // Calculate midpoint
+            Vector3 midpoint = (startPos + endPos) / 2f;
+            
+            // Create barrier at midpoint
+            Barrier barrier = new Barrier(Instantiate(barrierPrefab), selectedConnection);
+            midpoint.y = 0.25f;
+            barrier.barrierObject.transform.position = midpoint;
+            barrier.barrierObject.transform.LookAt(endPos);
+            barrier.barrierObject.transform.rotation = Quaternion.Euler(0, barrier.barrierObject.transform.rotation.eulerAngles.y + 90, 0);
+            barrier.barrierObject.name = "Barrier_" + i;
+            barriers.Add(barrier);
+            
+            // Disable connection
+            //selectedConnection.Disable();
+            
+            // Remove from available connections
+            availableConnections.RemoveAt(randomIndex);
+        }
     }
 
     void Update()
@@ -186,5 +234,52 @@ public class LineRendererController : MonoBehaviour
         public void Disable(){
             isEnabled = false;
         }
+    }
+
+    public class Barrier{
+        public GameObject barrierObject;
+        public Connection connection;
+        public Barrier(GameObject barrier, Connection connection){
+            this.barrierObject = barrier;
+            this.connection = connection;
+        }
+        public GameObject GetBarrier(){
+            return barrierObject;
+        }
+        public Connection GetConnection(){
+            return connection;
+        }
+        public void SetConnection(Connection connection){
+            this.connection = connection;
+        }
+        public void SetActive(bool active){
+            barrierObject.SetActive(active);
+        }
+    }
+    public bool ResetField(){
+        if (IsInitialized)
+        {
+            foreach (GameObject node in nodes)
+            {
+                Destroy(node);
+            }
+            foreach (GameObject cone in cones)
+            {
+                Destroy(cone);
+            }
+            foreach (GameObject line in lines)
+            {
+                Destroy(line);
+            }
+            foreach (Barrier barrier in barriers)
+            {
+                Destroy(barrier.barrierObject);
+            }
+            connections.Clear();
+            barriers.Clear();
+            Start();
+            return true;
+        }
+        return false;
     }
 }
