@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.ConstrainedExecution;
 using NUnit.Framework;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -21,6 +22,8 @@ public class LineRendererController : MonoBehaviour
     public GameObject[] lines;
     public int[] coneIndices;
     public  bool FIXED_INITIATION = true;
+    public bool RANDOM_NODES = false;
+    public float randomNodeRange = 0.01f;
     public int GOAL_NODE = 0; // cant be 0, randomizes if 0
 
     public int DisableConnectionsAmount = 0;
@@ -165,6 +168,15 @@ public class LineRendererController : MonoBehaviour
         //ConnectPoints(lines[5], nodes[1].transform.position, nodes[3].transform.position); // Left to left
         //ConnectPoints(lines[6], nodes[2].transform.position, nodes[4].transform.position); // Right to right
         //ConnectPoints(lines[7], nodes[3].transform.position, nodes[4].transform.position); // Left to right
+        if (RANDOM_NODES){
+        foreach (GameObject node in nodes)
+        {
+            node.transform.position = new Vector3(
+                node.transform.position.x + UnityEngine.Random.Range(-randomNodeRange, randomNodeRange), 
+                node.transform.position.y, 
+                node.transform.position.z + UnityEngine.Random.Range(-randomNodeRange, randomNodeRange)
+            );
+        }}
         DrawLines();
 
     }

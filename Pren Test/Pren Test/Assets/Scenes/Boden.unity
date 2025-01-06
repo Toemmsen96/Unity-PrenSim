@@ -166,6 +166,8 @@ MonoBehaviour:
   lines: []
   coneIndices: 
   FIXED_INITIATION: 1
+  RANDOM_NODES: 0
+  randomNodeRange: 0.05
   GOAL_NODE: 0
   DisableConnectionsAmount: 2
   DistanceMultiplier: 8
@@ -1443,8 +1445,8 @@ MonoBehaviour:
   moveSpeed: 4
   rotateSpeed: 75
   goalNodeIndex: 0
-  explosionPrefab: {fileID: 5266378106977556716, guid: 7bc7878c49be95d438acc3a15e505a99, type: 3}
-  explode: 0
+  explosionPrefab: {fileID: 159918, guid: a0040bf7072bc2f4e82d887d50a9c5e2, type: 3}
+  explode: 1
   POSITION_TOLERANCE: 1.2
   DEFAULT_ANGLE_THRESHOLD: 1
   LINE_THRESHOLD: 0.1
