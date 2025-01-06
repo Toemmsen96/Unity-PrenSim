@@ -1,12 +1,11 @@
 using System;
 using System.Collections;
 using Unity.VisualScripting;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using UnityEditor.PackageManager.Requests;
-using UnityEditor.MemoryProfiler;
 
 public class PrenController : MonoBehaviour
 {
@@ -37,6 +36,7 @@ public class PrenController : MonoBehaviour
     private LineRendererController.Barrier barrierToMove;
     private GameObject tempBarrier;
     private LineRendererController.Barrier originalBarrier;
+    private bool displayMenu = false;
 
 
     private Dictionary<int,String> goalNodes = new Dictionary<int, String>(){
@@ -143,6 +143,12 @@ public class PrenController : MonoBehaviour
             infoText.text = "Resetting...";
             drivingMode = DrivingMode.none;
             Reset();
+        }
+        if (Input.GetKeyDown(KeyCode.Escape)){
+            Application.Quit();
+        }
+        if (displayMenu){
+            //TODO
         }
     }
     public LineRendererController.Barrier IsInFrontOfBarrier(){
@@ -353,10 +359,10 @@ public class PrenController : MonoBehaviour
             //Debug.Log("Turning to face node");
             targetDirection = GetDirectionToTarget(node);
             if (GetAngleToTarget(node) > 0){
-                RotateLeft();
+                RotateRight();
             }
             else{
-                RotateRight();
+                RotateLeft();
             }        
     }
 
@@ -563,16 +569,23 @@ public Vector3 GetDirectionToTarget(Transform targetNode)
 
     public void RotateLeft()
     {
-        transform.Rotate(rightDirection, -rotateSpeed * Time.deltaTime);
+        transform.Rotate(rightDirection, rotateSpeed * Time.deltaTime);
     }
 
     public void RotateRight()
     {
-        transform.Rotate(rightDirection, rotateSpeed * Time.deltaTime);
+        transform.Rotate(rightDirection, -rotateSpeed * Time.deltaTime);
     }
     public void Reset(){
         lineRendererController.ResetField();
         Start();
         drivingMode = DrivingMode.start;
+    }
+
+    public void OpenMenu(){
+        displayMenu = true;
+    }
+    public void CloseMenu(){
+        displayMenu = false;
     }
 }
