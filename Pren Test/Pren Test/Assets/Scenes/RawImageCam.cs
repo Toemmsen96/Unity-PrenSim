@@ -35,7 +35,7 @@ public class RawImageCam : MonoBehaviour
 
         // Start HTTP server
         httpListener = new HttpListener();
-        httpListener.Prefixes.Add("http://localhost:8080/");
+        httpListener.Prefixes.Add("http://*:8080/");
         httpListener.Start();
         serverThread = new Thread(ServerLoop);
         serverThread.Start();
