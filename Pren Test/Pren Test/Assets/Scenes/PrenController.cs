@@ -20,10 +20,10 @@ public class PrenController : MonoBehaviour
     private Vector3 forwardDirection = new Vector3(1,0,0);
     private Vector3 rightDirection = new Vector3(0,-1,0);
     private bool isDriving = true;
-    public float POSITION_TOLERANCE = 2f;
-    public float DEFAULT_ANGLE_THRESHOLD = 5f;
-    public float LINE_THRESHOLD = 1f;
-    public float BARRIER_DISTANCE = 1f;
+    public float positionTolerance = 2f;
+    public float defaultAngleThreshold = 5f;
+    public float lineThreshold = 1f;
+    public float barrierDistance = 1f;
     private Vector3 targetDirection;
     private DrivingMode  drivingMode = DrivingMode.start;
     private int nextNode = 0;
@@ -32,7 +32,7 @@ public class PrenController : MonoBehaviour
     public bool moveBarrier = false;
     private BarrierLiftState barrierState = BarrierLiftState.LIFTING;
     private float backupStartTime;
-    public float BACKUP_DURATION = 1.0f;
+    public float backupDuration = 1.0f;
     private LineRendererController.Barrier barrierToMove;
     private GameObject tempBarrier;
     private LineRendererController.Barrier originalBarrier;
@@ -83,7 +83,7 @@ public class PrenController : MonoBehaviour
             yield return null;
         }
         lineRendererController = LineRendererController.Instance;
-        goalNodeIndex = lineRendererController.GOAL_NODE;
+        goalNodeIndex = lineRendererController.goalNode;
         Debug.Log("Goal node is: " + goalNodeIndex);
         if (infoText != null) {
             infoText.text = "Goal Node: " + goalNodes[goalNodeIndex];
@@ -155,7 +155,7 @@ public class PrenController : MonoBehaviour
         foreach (var barrier in lineRendererController.barriers){
             Vector2 barrierPos2D = new Vector2(barrier.barrierObject.transform.position.x, barrier.barrierObject.transform.position.z);
             Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
-            if (Vector3.Distance(barrierPos2D,robotPos2D) <= BARRIER_DISTANCE){
+            if (Vector3.Distance(barrierPos2D,robotPos2D) <= barrierDistance){
                 if ((barrier.GetConnection().GetStart() == currentNode || barrier.GetConnection().GetEnd() == currentNode)&& (barrier.GetConnection().GetStart() == nextNode || barrier.GetConnection().GetEnd() == nextNode) && IsFacingNode(barrier.barrierObject.transform, 90)){
                     moveBarrier = true;
                     return barrier;
@@ -167,12 +167,12 @@ public class PrenController : MonoBehaviour
 
     public void DriveToStart(){
         isDriving = true;
-        if (IsFacingNode(lineRendererController.nodes[0].transform, DEFAULT_ANGLE_THRESHOLD)){
+        if (IsFacingNode(lineRendererController.nodes[0].transform, defaultAngleThreshold)){
             Debug.Log("Facing node");
 
             Vector2 nodePos2D = new Vector2(lineRendererController.nodes[0].transform.position.x, lineRendererController.nodes[0].transform.position.z);
             Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
-            if (Vector2.Distance(nodePos2D, robotPos2D) <= POSITION_TOLERANCE)
+            if (Vector2.Distance(nodePos2D, robotPos2D) <= positionTolerance)
             {
                 Debug.Log("Reached node");
                 drivingMode = DrivingMode.drive;
@@ -197,12 +197,12 @@ public class PrenController : MonoBehaviour
     
     public void DriveToGoal(){
         isDriving = true;
-        if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform,DEFAULT_ANGLE_THRESHOLD)){
+        if (IsFacingNode(lineRendererController.nodes[goalNodeIndex].transform,defaultAngleThreshold)){
             Debug.Log("Facing node");
 
             Vector2 nodePos2D = new Vector2(lineRendererController.nodes[goalNodeIndex].transform.position.x, lineRendererController.nodes[goalNodeIndex].transform.position.z);
             Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
-            if (Vector2.Distance(nodePos2D,robotPos2D) <= POSITION_TOLERANCE)
+            if (Vector2.Distance(nodePos2D,robotPos2D) <= positionTolerance)
             {
                 isDriving = false;
                 drivingMode = DrivingMode.none;
@@ -300,7 +300,7 @@ public class PrenController : MonoBehaviour
     public void RecenterOnLine(){
         TurnToTransform(GetClosestPointOnLine(GetConnection(currentNode, nextNode)));
         MoveForward();
-        if (IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD)){
+        if (IsOnLine(GetConnection(currentNode,nextNode), lineThreshold)){
             TurnToTransform(lineRendererController.nodes[nextNode].transform);
         }
         //TODO
@@ -310,12 +310,12 @@ public class PrenController : MonoBehaviour
     public void DriveToNextNode(){
         isDriving = true;
         barrierToMove = IsInFrontOfBarrier();
-        Debug.Log("IsOnLine: " + IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD));
+        Debug.Log("IsOnLine: " + IsOnLine(GetConnection(currentNode,nextNode), lineThreshold));
         if (currentNode == goalNodeIndex){
             Finish();
             return;
         }
-        else if (!IsOnLine(GetConnection(currentNode,nextNode), LINE_THRESHOLD)){
+        else if (!IsOnLine(GetConnection(currentNode,nextNode), lineThreshold)){
             Debug.Log("Not on line");
             RecenterOnLine();
             return;
@@ -334,11 +334,11 @@ public class PrenController : MonoBehaviour
             LiftBarrier(barrierToMove);
             return;
         }
-        else if (IsFacingNode(lineRendererController.nodes[nextNode].transform, DEFAULT_ANGLE_THRESHOLD)){
+        else if (IsFacingNode(lineRendererController.nodes[nextNode].transform, defaultAngleThreshold)){
             Debug.Log("Facing node");
             Vector2 nodePos2D = new Vector2(lineRendererController.nodes[nextNode].transform.position.x, lineRendererController.nodes[nextNode].transform.position.z);
             Vector2 robotPos2D = new Vector2(transform.position.x, transform.position.z);
-            if (Vector2.Distance(nodePos2D,robotPos2D) <= POSITION_TOLERANCE)
+            if (Vector2.Distance(nodePos2D,robotPos2D) <= positionTolerance)
             {
                 Debug.Log("Reached node");
                 currentNode = nextNode;
@@ -399,13 +399,13 @@ public void LiftBarrier(LineRendererController.Barrier barrier) {
         
         case BarrierLiftState.TURNING_WITH_BARRIER:
             TurnToTransform(lineRendererController.nodes[currentNode].transform);
-            if (IsFacingNode(lineRendererController.nodes[currentNode].transform, DEFAULT_ANGLE_THRESHOLD)) {
+            if (IsFacingNode(lineRendererController.nodes[currentNode].transform, defaultAngleThreshold)) {
                 backupStartTime = Time.time;
                 barrierState = BarrierLiftState.BACKING_UP;
             }
             break;
         case BarrierLiftState.BACKING_UP:
-            if (Time.time - backupStartTime >= BACKUP_DURATION) {
+            if (Time.time - backupStartTime >= backupDuration) {
                 barrierState = BarrierLiftState.LOWERING;
             }
             MoveBackward();
@@ -425,7 +425,7 @@ public void LiftBarrier(LineRendererController.Barrier barrier) {
         case BarrierLiftState.TURNING_TO_NEXT:
             targetDirection = GetDirectionToTarget(lineRendererController.nodes[nextNode].transform);
             TurnToTransform(lineRendererController.nodes[nextNode].transform);
-            if (IsFacingNode(lineRendererController.nodes[nextNode].transform, DEFAULT_ANGLE_THRESHOLD)) {
+            if (IsFacingNode(lineRendererController.nodes[nextNode].transform, defaultAngleThreshold)) {
                 barrierState = BarrierLiftState.DONE;
                 moveBarrier = false;
                 isDriving = true;

@@ -21,38 +21,38 @@ public class LineRendererController : MonoBehaviour
     public GameObject[] cones;
     public GameObject[] lines;
     public int[] coneIndices;
-    public  bool FIXED_INITIATION = true;
-    public bool RANDOM_NODES = false;
+    public  bool fixedInitiation = true;
+    public bool randomNodes = false;
     public float randomNodeRange = 0.01f;
-    public int GOAL_NODE = 0; // cant be 0, randomizes if 0
+    public int goalNode = 0; // cant be 0, randomizes if 0
 
     public int DisableConnectionsAmount = 0;
 
     public float DistanceMultiplier = 4;
 
-    public int MAX_CONES = 2;
+    public int maxCones = 2;
 
-    public int MAX_BARRIERS = 2;
+    public int maxBarriers = 2;
 
-    public int MAX_POINTS = 8;
+    public int maxPoints = 8;
 
-    public int MAX_LINES = 15;
+    public int maxLines = 15;
 
     void Start()
     {
         Instance = this;
-        nodes = new GameObject[MAX_POINTS]; // Initialize the array with the correct size
-        cones = new GameObject[MAX_CONES]; // Initialize the array with the correct size
-        lines = new GameObject[MAX_LINES]; // Initialize the array with the correct size
-        coneIndices = new int[MAX_CONES]; // Initialize the array with the correct size
-        if (GOAL_NODE == 0)
+        nodes = new GameObject[maxPoints]; // Initialize the array with the correct size
+        cones = new GameObject[maxCones]; // Initialize the array with the correct size
+        lines = new GameObject[maxLines]; // Initialize the array with the correct size
+        coneIndices = new int[maxCones]; // Initialize the array with the correct size
+        if (goalNode == 0)
         {
-        GOAL_NODE = UnityEngine.Random.Range(3, 6);
-        Debug.Log("Goal node is: " + GOAL_NODE);
+        goalNode = UnityEngine.Random.Range(3, 6);
+        Debug.Log("Goal node is: " + goalNode);
         }
 
         //lineRenderer.positionCount = nodes.Length;
-        if (FIXED_INITIATION)
+        if (fixedInitiation)
         {
             // Hexagon
             nodes[0] = Instantiate(nodePrefab, new Vector3(0, 0, 0), Quaternion.identity); // Start node
@@ -64,7 +64,7 @@ public class LineRendererController : MonoBehaviour
             // extra nodes
             nodes[6] = Instantiate(nodePrefab, new Vector3(1*DistanceMultiplier, 0, -0.5f*DistanceMultiplier), Quaternion.identity); // Center node
             nodes[7] = Instantiate(nodePrefab, new Vector3(2*DistanceMultiplier, 0, 0), Quaternion.identity); // Center node
-            for (int i = 0; i < MAX_LINES; i++)
+            for (int i = 0; i < maxLines; i++)
             {
                 GameObject line = Instantiate(linePrefab, new Vector3(0, 0, 0), Quaternion.identity);
                 lines[i] = line;
@@ -76,7 +76,7 @@ public class LineRendererController : MonoBehaviour
 
         }
         else{
-            for (int i = 0; i < MAX_POINTS; i++)
+            for (int i = 0; i < maxPoints; i++)
             {
                 if (i == 0)
                 {
@@ -125,7 +125,7 @@ public class LineRendererController : MonoBehaviour
         List<Connection> availableConnections = new List<Connection>(connections);
         List<Connection> barrierConnections = new List<Connection>();
         
-        for (int i = 0; i < MAX_BARRIERS && availableConnections.Count > 0; i++) {
+        for (int i = 0; i < maxBarriers && availableConnections.Count > 0; i++) {
             int randomIndex = UnityEngine.Random.Range(0, availableConnections.Count);
             Connection selectedConnection = availableConnections[randomIndex];
             if (!selectedConnection.IsEnabled())
@@ -168,7 +168,7 @@ public class LineRendererController : MonoBehaviour
         //ConnectPoints(lines[5], nodes[1].transform.position, nodes[3].transform.position); // Left to left
         //ConnectPoints(lines[6], nodes[2].transform.position, nodes[4].transform.position); // Right to right
         //ConnectPoints(lines[7], nodes[3].transform.position, nodes[4].transform.position); // Left to right
-        if (RANDOM_NODES){
+        if (randomNodes){
         foreach (GameObject node in nodes)
         {
             node.transform.position = new Vector3(
@@ -194,12 +194,12 @@ public class LineRendererController : MonoBehaviour
     private void GenerateRandomCones()
     {
         // Generate random cones
-        for (int i = 0; i < MAX_CONES; i++)
+        for (int i = 0; i < maxCones; i++)
         {
             int randomIndex;
             do{
-            randomIndex = UnityEngine.Random.Range(1, MAX_POINTS-1);
-            } while (Array.Exists(coneIndices, element => element == randomIndex)|| randomIndex == GOAL_NODE);
+            randomIndex = UnityEngine.Random.Range(1, maxPoints-1);
+            } while (Array.Exists(coneIndices, element => element == randomIndex)|| randomIndex == goalNode);
             Debug.Log("Random cone generated at index: " + randomIndex);
             coneIndices[i] = randomIndex;
             cones[i] = Instantiate(conePrefab, new Vector3(nodes[randomIndex].transform.position.x, 0, nodes[randomIndex].transform.position.z), Quaternion.identity);
