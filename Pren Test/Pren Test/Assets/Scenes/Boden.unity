@@ -165,16 +165,16 @@ MonoBehaviour:
   cones: []
   lines: []
   coneIndices: 
-  FIXED_INITIATION: 1
-  RANDOM_NODES: 0
+  fixedInitiation: 1
+  randomNodes: 0
   randomNodeRange: 0.05
-  GOAL_NODE: 0
+  goalNode: 0
   DisableConnectionsAmount: 2
   DistanceMultiplier: 8
-  MAX_CONES: 2
-  MAX_BARRIERS: 10
-  MAX_POINTS: 8
-  MAX_LINES: 15
+  maxCones: 2
+  maxBarriers: 2
+  maxPoints: 8
+  maxLines: 15
 --- !u!120 &52119507
 LineRenderer:
   serializedVersion: 2
@@ -1447,12 +1447,12 @@ MonoBehaviour:
   goalNodeIndex: 0
   explosionPrefab: {fileID: 159918, guid: a0040bf7072bc2f4e82d887d50a9c5e2, type: 3}
   explode: 0
-  POSITION_TOLERANCE: 1.2
-  DEFAULT_ANGLE_THRESHOLD: 1
-  LINE_THRESHOLD: 0.1
-  BARRIER_DISTANCE: 1.5
+  positionTolerance: 1.2
+  defaultAngleThreshold: 1
+  lineThreshold: 0.1
+  barrierDistance: 1.5
   moveBarrier: 0
-  BACKUP_DURATION: 0.7
+  backupDuration: 0.7
 --- !u!4 &2078082468
 Transform:
   m_ObjectHideFlags: 0
